@@ -5,10 +5,12 @@ const puppeteer = require("puppeteer-extra");
 const StealthPlugin = require("puppeteer-extra-plugin-stealth");
 puppeteer.use(StealthPlugin());
 const { executablePath } = require("puppeteer");
-const { exit, env } = require("process");
+
+// Convert relative to absolute path
 const list_path = path.resolve("./list.txt");
-const plugin_path = path.resolve("./plugin"); // Convert relative to absolute path
-const plugin_config_path = path.resolve("./plugin/js/config_ac_api_key.js"); // Convert relative to absolute path
+const plugin_path = path.resolve("./plugin");
+const plugin_config_path = path.resolve("./plugin/js/config_ac_api_key.js");
+
 const global_args = [
   "--disable-web-security",
   "--disable-features=IsolateOrigins,site-per-process",
@@ -41,8 +43,9 @@ const global_args = [
   "--disable-extensions-except=" + plugin_path,
   "--load-extension=" + plugin_path,
 ];
-const Logger = require("@ptkdev/logger");
 
+// Logger
+const Logger = require("@ptkdev/logger");
 const logger_options = {
   language: "en",
   colors: true,
@@ -58,7 +61,6 @@ const logger_options = {
     encoding: "utf8",
   },
   path: {
-    // remember: add string *.log to .gitignore
     debug_log: path.resolve("./debug.log"),
     error_log: path.resolve("./errors.log"),
   },
@@ -99,10 +101,13 @@ list = generate_list(list_data);
 
   logger.info("Browser Initiated");
 
+  // Iterate over list
   for (let index = 0; index < list.length; index++) {
+    // Extract email and password from current row
     const item = list[index].item.trim().split(":");
     const email = item[0];
     const password = item[1];
+
     logger.info(
       "INDEX: " +
         index +
@@ -114,6 +119,12 @@ list = generate_list(list_data);
         password
     );
 
+    // This is how you skip items
+    // if(index === 1) {
+    //   continue; // By using continue keyword
+    // }
+
+    // Open quill website
     await page.goto("https://quillbot.com/login?returnUrl=/", {
       waitUntil: "networkidle2",
     });
@@ -166,8 +177,55 @@ list = generate_list(list_data);
     await page.click("button.auth-btn");
     logger.info("Clicked on Login button");
 
+    // Check account premium
+    let is_premium = false;
+    await page
+      .waitForSelector(
+        "#root-client > div.MuiGrid-root.MuiGrid-container > div.MuiGrid-root.MuiGrid-item > div > header > div > div.MuiGrid-root.MuiGrid-item > div > a > div > div",
+        { visible: true, timeout: 10000 }
+      )
+      .then(() => {
+        is_premium = true;
+      })
+      .catch((e) => {
+        logger.error(e);
+      });
+
+    logger.info("Account is " + (is_premium ? "PREMIUM" : "FREE"));
+
+    // Logout
+    // click on profile button
+    await page
+      .$eval(
+        "#root-client > div.MuiGrid-root.MuiGrid-container > div.MuiGrid-root.MuiGrid-item > div > header > div > div.MuiGrid-root.MuiGrid-item > div > div:nth-child(4) > span > button",
+        (el) => el.click()
+      )
+      .then(() => {
+        logger.info("Clicked on profile button");
+      })
+      .catch((e) => {
+        logger.error(e);
+      });
+
+    await page.waitForTimeout(5000);
+
+    // click on logout button
+    await page
+      .$eval(
+        "body > div.MuiModal-root.MuiPopover-root > div.MuiPaper-root.MuiPaper-elevation.MuiPaper-rounded.MuiPaper-elevation8.MuiPopover-paper > div > div.MuiGrid-root.MuiGrid-item:last-child p",
+        (el) => el.click()
+      )
+      .then(() => {
+        logger.info("Clicked on logout button");
+      })
+      .catch((e) => {
+        logger.error(e);
+      });
+
+    logger.info("Logged out");
+
     // Remove it
-    await page.waitForTimeout(300000);
+    // await page.waitForTimeout(300000);
   }
 })();
 
